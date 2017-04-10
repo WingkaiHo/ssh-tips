@@ -1,0 +1,66 @@
+#!/bin/bash -x
+
+
+SelfPath=`dirname "$0"`
+SelfPath=`cd ${SelfPath}; pwd`
+
+echo "SelfPath:  $SelfPath"
+
+#The source video path which you want to transcode
+inputDir="/home/hyj/video/input/"
+#The destination video path which you want to store result
+outputDir="/home/hyj/video/output/"
+
+logFile="$SelfPath/transcode.log"
+logDetailPath="$SelfPath/log-detail/"
+
+# create the directory to store detail file
+`mkdir -p $logDetailPath`
+# this batch path has some common feature.
+cd $inputDir
+srcPath=`pwd`
+
+function startTranscode()
+{
+	echo "Transcode from Path [$inputDir] to [$outputDir]" >> $logFile
+	echo $LD_LIBRARY_PATH
+	for fileName in `ls $srcPath`
+	do
+		mkdir -p $outputDir
+		mkdir -p $logDetailPath
+
+		filename=`echo $fileName | cut -d '.' -f 1`
+		
+		# transcode 1280x720 vb:256k ab:32k	
+		srcFile=$srcPath/$fileName
+		toFile=$outputDir/$filename-1000k.flv
+
+		echo "  $fileName ---> $fileName-1000.flv"  >> $logFile
+	
+		$SelfPath/ffmpeg -y -i $srcFile -profile main -r 25 -b 1000k -level 4.1 -s 1280x720  -acodec libmp3lame \
+		-ac 2 -ar 44100 -ab 32k -vcodec libx264 -x264opts ref=6:deblock=0,0:analyse=all:me=umh:psy_rd=1.00,0.00:me_range=24:fast_pskip=0:interlaced=0:constrained_intra=0:bframes=6:b_pyramid=1:open_gop=0:keyint=125:keyint_min=25:mbtree=1:qpmin=10:qpmax=51:direct=auto:pass=1:slices=1:no-dct-decimate \
+		-metadata service_name=hyj -metadata service_provider=hyj \
+		$toFile >$logDetailPath/$fileName.log 2>&1 
+		
+		sleep 2s
+
+		$SelfPath/ffmpeg -y -i $srcFile -profile main -r 25 -b 1000k -level 4.1 -s 1280x720  -acodec libmp3lame \
+		-ac 2 -ar 44100 -ab 32k -vcodec libx264 -x264opts ref=6:deblock=0,0:analyse=all:me=umh:psy_rd=1.00,0.00:me_range=24:fast_pskip=0:interlaced=0:constrained_intra=0:bframes=6:b_pyramid=1:open_gop=0:keyint=125:keyint_min=25:mbtree=1:qpmin=10:qpmax=51:direct=auto:pass=2:slices=1:no-dct-decimate \
+		-metadata service_name=hyj -metadata service_provider=hyj \
+		$toFile >$logDetailPath/$fileName.log 2>&1 
+
+	done
+}
+
+LIBRARY_PATH=$SelfPath/lib
+
+export LD_LIBRARY_PATH="${LIBRARY_PATH}:${LIBRARY_PATH}/ffmpeg:${LIBRARY_PATH}/mp3lame:${LIBRARY_PATH}/x264:${LIBRARY_PATH}/faac:${LIBRARY_PATH}/faad:${LIBRARY_PATH}/opencv:${LIBRARY_PATH}/opengl:${LIBRARY_PATH}/vp8:${LIBRARY_PATH}/libaacplus"
+
+
+echo "Start to transcode ..."  >> $logFile
+startTranscode
+
+echo "Finished to transcoding ..."   >> $logFile
+
+
+
